@@ -72,7 +72,7 @@ func runAction(ctx context.Context, basePath string, defaultCfg api.ActionDefaul
 		if err != nil {
 			return err
 		}
-		l.Debug("wait action succeeded", "duration", time.Since(start))
+		l.Info("wait action succeeded", "duration", time.Since(start))
 		return nil
 	}
 
@@ -90,7 +90,7 @@ func runAction(ctx context.Context, basePath string, defaultCfg api.ActionDefaul
 		}
 	}
 
-	l.Info("running command", "cmd", cmdEscaped)
+	l.Debug("running command", "cmd", cmdEscaped)
 
 	actionDefaults := actionGetCfg(ctx, defaultCfg, action, variableConfig.GetAllTemplates())
 	actionDefaults.Dir = filepath.Join(basePath, actionDefaults.Dir)
@@ -140,7 +140,7 @@ retryCmd:
 
 		// If no timeout is set, run the command and return or continue retrying.
 		if actionDefaults.MaxTotalSeconds < 1 {
-			l.Info("waiting for action (no timeout)", "cmd", cmdEscaped)
+			l.Debug("waiting for action (no timeout)", "cmd", cmdEscaped)
 			if err := tryCmd(ctx); err != nil {
 				continue retryCmd
 			}
@@ -149,7 +149,7 @@ retryCmd:
 		}
 
 		// Run the command on repeat until success or timeout.
-		l.Info("waiting for action", "cmd", cmdEscaped, "timeout", fmt.Sprintf("%d seconds", actionDefaults.MaxTotalSeconds))
+		l.Debug("waiting for action", "cmd", cmdEscaped, "timeout", fmt.Sprintf("%d seconds", actionDefaults.MaxTotalSeconds))
 		select {
 		// On timeout break the loop to abort.
 		case <-timeout:
@@ -278,7 +278,7 @@ func runWaitClusterAction(ctx context.Context, cluster *api.ActionWaitCluster, t
 	if condition != "" {
 		desc = fmt.Sprintf("%s to be %s", desc, condition)
 	}
-	l.Info("running wait action", "description", desc)
+	l.Debug("running wait action", "description", desc)
 
 	if condition == "" && cluster.Condition.Default == api.WaitForReadiness {
 		return wait.ForResourceDefaultReady(ctx, kind, identifier, condition, namespace, timeout)
@@ -302,7 +302,7 @@ func runWaitNetworkAction(ctx context.Context, network *api.ActionWaitNetwork, t
 	if condition != "" {
 		desc = fmt.Sprintf("%s to be %s", desc, condition)
 	}
-	l.Info("running wait action", "description", desc)
+	l.Debug("running wait action", "description", desc)
 
 	return wait.ForNetwork(ctx, kind, identifier, condition, timeout)
 }

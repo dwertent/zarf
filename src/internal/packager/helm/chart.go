@@ -92,7 +92,7 @@ func InstallOrUpgradeChart(ctx context.Context, zarfChart api.Chart, chart *char
 	if source == "" {
 		source = "Zarf-generated"
 	}
-	l.Info("processing Helm chart", "name", zarfChart.Name, "source", source)
+	l.Debug("processing Helm chart", "name", zarfChart.Name, "source", source)
 
 	// If no release name is specified, use the chart name.
 	if zarfChart.ReleaseName == "" {
@@ -125,12 +125,12 @@ func InstallOrUpgradeChart(ctx context.Context, zarfChart api.Chart, chart *char
 
 		if errors.Is(histErr, driver.ErrReleaseNotFound) {
 			// No prior release, try to install it.
-			l.Info("performing Helm install", "chart", zarfChart.Name)
+			l.Debug("performing Helm install", "chart", zarfChart.Name)
 
 			newRelease, err = installChart(helmCtx, zarfChart, chart, values, opts, actionConfig, postRender)
 		} else if histErr == nil && len(releases) > 0 {
 			// Otherwise, there is a prior release so upgrade it.
-			l.Info("performing Helm upgrade", "chart", zarfChart.Name)
+			l.Debug("performing Helm upgrade", "chart", zarfChart.Name)
 
 			lastReleaser := releases[len(releases)-1]
 
@@ -171,6 +171,7 @@ func InstallOrUpgradeChart(ctx context.Context, zarfChart api.Chart, chart *char
 		if err != nil {
 			return nil, zarfChart.ReleaseName, fmt.Errorf("%w: unable to rollback: %w", installErr, err)
 		}
+		l.Info("Helm rollback complete", "chart", zarfChart.Name)
 		return nil, zarfChart.ReleaseName, installErr
 	}
 
@@ -189,15 +190,17 @@ func InstallOrUpgradeChart(ctx context.Context, zarfChart api.Chart, chart *char
 		runtimeObjs = append(runtimeObjs, resource.Object)
 	}
 
+	healthCheckResult := "skipped"
 	if !zarfChart.SkipWait {
 		// Ensure we don't go past the timeout by using a context initialized with the helm timeout
-		l.Info("running health checks", "chart", zarfChart.Name)
+		l.Debug("running health checks", "chart", zarfChart.Name)
 		if err := healthchecks.WaitForReadyRuntime(helmCtx, opts.Cluster.Watcher, runtimeObjs); err != nil {
 			return nil, zarfChart.ReleaseName, err
 		}
+		healthCheckResult = "passed"
 	}
 
-	l.Debug("done processing Helm chart", "name", zarfChart.Name, "duration", time.Since(start))
+	l.Info("Helm chart deployed", "chart", zarfChart.Name, "namespace", zarfChart.Namespace, "healthChecks", healthCheckResult, "duration", time.Since(start))
 
 	// return any collected connect strings for zarf connect.
 	return postRender.connectStrings, zarfChart.ReleaseName, nil

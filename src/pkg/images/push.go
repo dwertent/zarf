@@ -176,6 +176,7 @@ func Push(ctx context.Context, imageList []transform.Image, sourceDirectory stri
 		index := 0
 		for img := range toPush {
 			index++
+			// Log the start of the image push attempt, its an info log because it's an event that can take some time and is useful for tracking progress.
 			l.Info("pushing image", "name", img, "count", fmt.Sprintf("%d/%d", index, total))
 			// If this is not a no checksum image push it for use with the Zarf agent
 			if !cfg.NoChecksum {
@@ -229,6 +230,7 @@ func Push(ctx context.Context, imageList []transform.Image, sourceDirectory stri
 			}
 
 			pushed = append(pushed, img)
+			l.Info("finished pushing image", "name", img, "count", fmt.Sprintf("%d/%d", index, total), "duration", time.Since(start).Round(time.Millisecond*100))
 		}
 		return nil
 	}, retry.Context(ctx), retry.Attempts(uint(cfg.Retries)), retry.Delay(500*time.Millisecond), retry.LastErrorOnly(true), retry.OnRetry(func(attempt uint, err error) {

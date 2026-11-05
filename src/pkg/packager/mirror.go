@@ -122,7 +122,7 @@ func pushComponentReposToRegistry(ctx context.Context, component api.Component,
 		}
 		err = retry.Do(func() error {
 			if !dns.IsServiceURL(gitInfo.Address) {
-				l.Info("pushing repository to server", "repo", repo.URL, "server", gitInfo.Address)
+				l.Debug("pushing repository to server", "repo", repo.URL, "server", gitInfo.Address)
 				err = repository.Push(ctx, gitInfo.Address, gitInfo.PushUsername, gitInfo.PushPassword)
 				if err != nil {
 					return err
@@ -156,7 +156,7 @@ func pushComponentReposToRegistry(ctx context.Context, component api.Component,
 				return err
 			}
 			return tunnel.Wrap(func() error {
-				l.Info("pushing repository to server", "repo", repo.URL, "server", endpoints[0])
+				l.Debug("pushing repository to server", "repo", repo.URL, "server", endpoints[0])
 				err = repository.Push(ctx, endpoints[0], gitInfo.PushUsername, gitInfo.PushPassword)
 				if err != nil {
 					return err
@@ -177,6 +177,7 @@ func pushComponentReposToRegistry(ctx context.Context, component api.Component,
 		if err != nil {
 			return fmt.Errorf("unable to push repo %s to the Git Server: %w", repo.URL, err)
 		}
+		l.Info("repository pushed", "component", component.Name, "repo", repo.URL, "server", gitInfo.Address)
 	}
 	return nil
 }

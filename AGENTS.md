@@ -20,6 +20,13 @@ Write idiomatic Go; `golangci-lint fmt` applies `gofmt` and `goimports`. Keep pa
 
 Install hooks with `pre-commit install`; they enforce formatting, linting, credentials checks, and generated schema/docs consistency.
 
+## Logging
+
+- Log progress, routine starts, and polling at `debug`.
+- Log successful completion at `info`.
+- Log errors at `warn`, including the reason and relevant operation context.
+- Image pushes are the only progress exception: keep their start/progress logs at `info` because uploads can take a long time.
+
 ## Testing Guidelines
 
 Add package-local tests for behavior changes, with `TestThing` / `TestThing_condition` names and table cases where useful. Use `testify` assertions. Add or update a numbered `src/test/e2e/` journey for new user-visible CLI features; avoid cluster requirements unless needed.

@@ -61,7 +61,7 @@ Bumping the directive raises the minimum for every consumer; call it out in the 
 
 Zarf is a tool used within the United States Government and as such security is our highest priority. Contributors will require two (2) core team reviews (Maintainers/Reviewers) on a Pull Request before merge.
 
-Zarf maintainers will require one (1) core team review before merge. See the (contributing ladder)[CONTRIBUTING_LADDER.md] for more information.
+Zarf maintainers will require one (1) core team review before merge. See the [contributing ladder](CONTRIBUTOR_LADDER.md) for more information.
 
 ### Developer Workflow
 

@@ -140,7 +140,7 @@ func Deploy(ctx context.Context, pkgLayout *layout.PackageLayout, opts DeployOpt
 	}
 
 	l := logger.From(ctx)
-	l.Info("starting deploy", "package", pkg.Metadata.Name)
+	l.Debug("starting deploy", "package", pkg.Metadata.Name)
 
 	if opts.InjectorPort == 0 && opts.RegistryInfo.RegistryMode == state.RegistryModeProxy {
 		opts.InjectorPort = state.ZarfInjectorDefaultHostPort
@@ -203,7 +203,7 @@ func Deploy(ctx context.Context, pkgLayout *layout.PackageLayout, opts DeployOpt
 	if len(deployedComponents) == 0 {
 		l.Warn("no components were selected for deployment. Inspect the package to view the available components and select components interactively or by name with \"--components\"")
 	}
-	l.Debug("deployment complete", "duration", time.Since(start))
+	l.Info("deployment complete", "package", pkg.Metadata.Name, "duration", time.Since(start))
 
 	// assemble the result
 	deployResult := DeployResult{
@@ -265,6 +265,7 @@ func (d *deployer) deployComponents(ctx context.Context, pkgLayout *layout.Packa
 	}
 
 	for _, component := range pkg.Components {
+		componentStart := time.Now()
 		packageGeneration := 1
 		// Connect to cluster if a component requires it.
 		if component.RequiresCluster() {
@@ -350,14 +351,21 @@ func (d *deployer) deployComponents(ctx context.Context, pkgLayout *layout.Packa
 				Values:         d.vals,
 				StateAccess:    template.StateAccess{State: d.s, AccessKeys: component.StateAccess},
 			}); err != nil {
-				l.Debug("unable to run component failure action", "error", err.Error())
+				l.Warn("unable to run component failure action", "error", err.Error())
 			}
 		}
 
 		if deployErr != nil {
+			message := "component deployment failed"
+			switch {
+			case errors.Is(deployErr, context.DeadlineExceeded):
+				message = "component deployment timed out"
+			case errors.Is(deployErr, context.Canceled):
+				message = "component deployment cancelled"
+			}
+			l.Warn("package", pkg.Metadata.Name, "component", component.Name, message, "error", deployErr)
 			cleanup := func(ctx context.Context) {
 				onFailure()
-				l.Debug("component deployment failed", "component", component.Name, "error", deployErr.Error())
 				deployedComponents[idx].Status = state.ComponentStatusFailed
 				deployedComponents[idx].InstalledCharts = state.MergeInstalledChartsForComponent(deployedComponents[idx].InstalledCharts, charts, true)
 				if d.isConnectedToCluster() {
@@ -389,10 +397,12 @@ func (d *deployer) deployComponents(ctx context.Context, pkgLayout *layout.Packa
 		// Alpha success hooks observe the saved successful deployment
 		if pkg.GetAPIVersion() == v1alpha1.APIVersion {
 			if err := onSuccess(); err != nil {
+				l.Warn("component deployment failed", "package", pkg.Metadata.Name, "component", component.Name, "error", err, "duration", time.Since(componentStart))
 				onFailure()
 				return nil, err
 			}
 		}
+		l.Info("component deployed", "package", pkg.Metadata.Name, "component", component.Name, "duration", time.Since(componentStart))
 	}
 
 	return deployedComponents, nil
@@ -521,9 +531,8 @@ func (d *deployer) deployInitComponent(ctx context.Context, pkgLayout *layout.Pa
 
 func (d *deployer) deployComponent(ctx context.Context, pkgLayout *layout.PackageLayout, component api.Component, noImgChecksum bool, noImgPush bool, opts DeployOptions) (_ []state.InstalledChart, err error) {
 	l := logger.From(ctx)
-	start := time.Now()
 
-	l.Info("deploying component", "name", component.Name)
+	l.Debug("deploying component", "name", component.Name)
 
 	hasImages := len(component.GetImages()) > 0 && !noImgPush
 	hasCharts := len(component.Charts) > 0
@@ -647,22 +656,23 @@ func (d *deployer) deployComponent(ctx context.Context, pkgLayout *layout.Packag
 	if len(component.HealthChecks) > 0 {
 		healthCheckContext, cancel := context.WithTimeout(ctx, opts.Timeout)
 		defer cancel()
-		l.Info("running health checks")
+		l.Debug("running health checks", "component", component.Name)
 		if err := healthchecks.Run(healthCheckContext, d.c.Watcher, component.HealthChecks); err != nil {
 			return charts, fmt.Errorf("health checks failed: %w", err)
 		}
+		l.Info("component health checks passed", "component", component.Name)
 	}
 
 	if err := g.Wait(); err != nil {
 		return charts, err
 	}
-	l.Debug("done deploying component", "name", component.Name, "duration", time.Since(start))
 	return charts, nil
 }
 
 func (d *deployer) installCharts(ctx context.Context, pkgLayout *layout.PackageLayout, component api.Component, opts DeployOptions) (_ []state.InstalledChart, err error) {
-	l := logger.From(ctx)
 	pkg := pkgLayout.Definition()
+	l := logger.From(ctx).With("package", pkg.Metadata.Name, "component", component.Name)
+	ctx = logger.WithContext(ctx, l)
 	installedCharts := []state.InstalledChart{}
 
 	tmpDir, err := utils.MakeTempDir(config.CommonOptions.TempDirectory)
@@ -738,8 +748,8 @@ func (d *deployer) installCharts(ctx context.Context, pkgLayout *layout.PackageL
 }
 
 func (d *deployer) installManifests(ctx context.Context, pkgLayout *layout.PackageLayout, component api.Component, opts DeployOptions) (_ []state.InstalledChart, err error) {
-	l := logger.From(ctx)
 	pkg := pkgLayout.Definition()
+	l := logger.From(ctx).With("package", pkg.Metadata.Name, "component", component.Name)
 	tmpDir, err := utils.MakeTempDir(config.CommonOptions.TempDirectory)
 	if err != nil {
 		return nil, err
@@ -818,7 +828,8 @@ func (d *deployer) installManifests(ctx context.Context, pkgLayout *layout.Packa
 		}
 
 		// Install the chart.
-		connectStrings, installedChartName, err := helm.InstallOrUpgradeChart(ctx, chart, helmChart, nil, helmOpts)
+		manifestCtx := logger.WithContext(ctx, l.With("manifest", manifest.Name))
+		connectStrings, installedChartName, err := helm.InstallOrUpgradeChart(manifestCtx, chart, helmChart, nil, helmOpts)
 		if err != nil {
 			installedCharts = append(installedCharts, state.InstalledChart{Namespace: manifest.Namespace, ChartName: installedChartName, ConnectStrings: connectStrings, Status: state.ChartStatusFailed})
 			return installedCharts, err
@@ -923,7 +934,7 @@ func (d *deployer) processComponentFiles(ctx context.Context, pkgLayout *layout.
 	l := logger.From(ctx)
 	pkg := pkgLayout.Definition()
 	start := time.Now()
-	l.Info("copying files", "count", len(component.Files))
+	l.Debug("copying files", "count", len(component.Files))
 
 	tmpdir, err := utils.MakeTempDir(config.CommonOptions.TempDirectory)
 	if err != nil {
@@ -939,7 +950,7 @@ func (d *deployer) processComponentFiles(ctx context.Context, pkgLayout *layout.
 	}
 
 	for fileIdx, file := range component.Files {
-		l.Info("loading file", "name", file.Destination)
+		l.Debug("loading file", "name", file.Destination)
 
 		fileLocation := filepath.Join(filesDir, layout.ComponentFileRelPath(fileIdx, file.Destination))
 
@@ -1040,7 +1051,7 @@ func (d *deployer) processComponentFiles(ctx context.Context, pkgLayout *layout.
 		}
 	}
 
-	l.Debug("done copying files", "duration", time.Since(start))
+	l.Info("done copying files", "component", component.Name, "count", len(component.Files), "duration", time.Since(start))
 
 	return nil
 }
