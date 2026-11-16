@@ -3,7 +3,9 @@
 ...
 
 ## Related Issue
-<!-- Every PR must link to an issue that has a "Ready" status and is assigned to you. Otherwise, the PR will be closed. -->
+<!-- Every PR, including a draft, must link to an open issue in this repository
+with Ready status on the project board and assignment to the PR author.
+Otherwise, the PR will be closed. See CONTRIBUTING.md#before-opening-a-pull-request. -->
 
 Fixes #
 <!-- or -->

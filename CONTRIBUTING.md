@@ -2,11 +2,11 @@
 
 First off, thanks so much for wanting to help out! :tada:
 
-This document describes the steps and requirements for contributing a bug fix or feature in a Pull Request to Zarf! If you have any questions about the process or the pull request you are working on feel free to reach out in the [Zarf Kubernetes Slack Channel](https://kubernetes.slack.com/archives/C03B6BJAUJ3). The doc also details a bit about the governance structure of the project.
+This document describes the steps and requirements for contributing a bug fix or feature in a pull request to Zarf. Questions about the process or a pull request can be discussed in the [Zarf OpenSSF Slack Channel](https://openssf.slack.com/archives/C07AKUMBDMJ). The document also describes the governance structure of the project.
 
 ## Developer Experience
 
-Continuous Delivery is core to our development philosophy. Check out [https://minimumcd.org](https://minimumcd.org/) for a good baseline agreement on what that means.
+Continuous Delivery is core to the Zarf development philosophy. Check out [https://minimumcd.org](https://minimumcd.org/) for a good baseline agreement on what that means.
 
 Specifically:
 
@@ -17,12 +17,12 @@ Specifically:
 
 ### Pre-Commit Hooks and Linting
 
-We use [pre-commit](https://pre-commit.com/) to manage our pre-commit hooks, which lint and format code before it's committed.
+Zarf uses [pre-commit](https://pre-commit.com/) to manage pre-commit hooks, which lint and format code before it's committed.
 
 #### Prerequisites
 
-- **Go** matching the version in the project go.mod, available on your `PATH`. Our pre-commit hooks invoke `golangci-lint` directly from your `PATH` rather than managing a Go environment (see [Supply-chain notes](#supply-chain-notes) below).
-- **Python 3**, required by pre-commit itself and by several of our hooks.
+- **Go** matching the version in the project go.mod, available on `PATH`. The pre-commit hooks invoke `golangci-lint` directly from `PATH` rather than managing a Go environment (see [Supply-chain notes](#supply-chain-notes) below).
+- **Python 3**, required by pre-commit itself and by several project hooks.
 - **pre-commit**, installed per the [pre-commit installation guide](https://pre-commit.com/#installation).
 
 #### Setup
@@ -42,7 +42,7 @@ Every commit now runs the hooks; linting can also be invoked directly via `make 
 `.pre-commit-config.yaml` is deliberately configured to reduce the attack surface of the contributor loop:
 
 - **External hook repos are pinned by commit SHA**, with the original tag in a trailing comment. Git tags are mutable on the server side; pinning by SHA ensures a fresh `pre-commit install` or `pre-commit autoupdate` cannot silently pull a retargeted tag. This matches the SHA-pinning convention we already use for GitHub Actions.
-- **Go-based hooks use `language: system`** so pre-commit invokes the `golangci-lint` already on your `PATH` rather than managing its own Go environment or fetching a toolchain from `go.dev`. This keeps lint/format behavior aligned with CI and avoids introducing a second trust root.
+- **Go-based hooks use `language: system`** so pre-commit invokes the `golangci-lint` already on `PATH` rather than managing its own Go environment or fetching a toolchain from `go.dev`. This keeps lint/format behavior aligned with CI and avoids introducing a second trust root.
 
 When upgrading a pinned hook, run `pre-commit autoupdate --freeze` — the `--freeze` flag writes the resolved commit SHA (rather than the tag) back into `rev:`. Update the trailing tag comment to match, so the config stays auditable.
 
@@ -59,39 +59,53 @@ Bumping the directive raises the minimum for every consumer; call it out in the 
 
 ### Contributing Guidelines
 
-Zarf is a tool used within the United States Government and as such security is our highest priority. Contributors will require two (2) core team reviews (Maintainers/Reviewers) on a Pull Request before merge.
+Zarf is a tool used within the United States Government and as such security is the highest priority for the project. Contributors will require two (2) core team reviews (Maintainers/Reviewers) on a Pull Request before merge.
 
-Zarf maintainers will require one (1) core team review before merge. See the (contributing ladder)[CONTRIBUTING_LADDER.md] for more information.
+Zarf maintainers will require one (1) core team review before merge. See the [contributor ladder](CONTRIBUTOR_LADDER.md) for more information.
+
+### Opening an issue
+
+Issues must describe real problems or use cases. AI must not be used to invent problems or use cases for issues. Maintainers may close issues that do not follow this policy.
+
+### Before opening a pull request
+
+Before starting implementation, comment on an issue in this repository to discuss the problem, intended behavior, and scope, and request assignment. A maintainer must approve the issue for development, set its status on the project board to `Ready`, and assign it to the intended pull request author. Agreement on intent and behavior is sufficient; implementation details do not need to be decided in advance.
+
+Every new pull request must reference at least one open issue in this repository that is `Ready` and assigned to the pull request author. These requirements apply to all contributors, including maintainers, and to bug fixes, features, documentation, and draft pull requests.
+
+Link the issue under the `## Related Issue` heading in the pull request description, using `Fixes #123`, `Relates to #123`, or its full GitHub issue URL. References to pull requests or issues in other repositories do not qualify.
+
+`Ready` means maintainers agree that the work is in scope and its intended behavior is clear. Filing an issue or finding a `good first issue` or `help-wanted` label does not establish approval. Readiness and assignment coordinate work; they do not guarantee review or acceptance.
+
+Pull requests that do not meet these entry requirements will be closed. Discuss the issue with a maintainer, obtain `Ready` status and assignment, update the pull request description, and reopen the same pull request. Do not open replacement pull requests to bypass the requirements. A maintainer can help reopen a pull request if needed.
 
 ### Developer Workflow
 
 :key: == Required by automation
 
-1. Create an issue or find a relevant unassigned issue. Before starting implementation, the issue must be assigned to you and its status on the project board must be Ready
-   - If the issue isn't Ready, comment to clarify ambiguous behavior and resolve open questions.
-   - Comment to request assignment.
-   - If you have any questions as you work through the code, reach out in the [Zarf OpenSSF Slack Channel](https://openssf.slack.com/archives/C07AKUMBDMJ).
-1. :key: Set up your Git config to GPG sign all commits. [Here's some documentation on how to set it up](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits). You won't be able to merge your PR if you have any unverified commits.
-1. In addition to signing your commits, you will also need to sign-off on commits stating you agree to the contribution terms.
-   - This can be done by using `-s` with your git commit - adding "Signed-off-by" line automatically.
-   - Example: `git commit -s -m "fix: add missing newline"`
-1. Create a Draft Pull Request as soon as you can. We lean towards working in the open. Ensure there is a link to the issue you're working on.
+1. Follow the [pull request entry requirements](#before-opening-a-pull-request): discuss the issue, obtain maintainer approval and Ready status, and obtain assignment before starting implementation.
+   - Questions during implementation can be discussed in the [Zarf OpenSSF Slack Channel](https://openssf.slack.com/archives/C07AKUMBDMJ).
+1. :key: Configure Git to GPG sign all commits. See the [commit signing documentation](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits). Pull requests with unverified commits cannot be merged.
+1. Sign off on each commit to confirm agreement to the contribution terms, in addition to cryptographically signing it.
+   - Use `-s` with `git commit` to add a "Signed-off-by" trailer automatically; use `-S` to cryptographically sign the commit.
+   - Example: `git commit -S -s -m "fix: add missing newline"`
+1. Once the issue is Ready and assigned to the pull request author, open a draft pull request early to work in the open. Link the approved issue under Related Issue and explain how the changes address its agreed scope.
    - :key: We follow the [conventional commits spec](https://www.conventionalcommits.org/en/v1.0.0/) with the [commitlint conventional config](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional) as extended types for PR titles.
-1. :key: Automated tests will begin based on the paths you have edited in your Pull Request.
-   > ⚠️ **NOTE:** _If you are an external third-party contributor, the pipelines won't run until a [CODEOWNER](https://github.com/zarf-dev/zarf/blob/main/CODEOWNERS) approves the pipeline run._
-1. Once the review is complete and approved, a core member of the zarf project will merge your PR. If you are a contributor, two core members of the zarf project will be required to approve the PR.
+1. :key: Automated tests will begin based on the paths edited in the pull request.
+   > ⚠️ **NOTE:** _For external third-party contributions, the pipelines will not run until a [CODEOWNER](https://github.com/zarf-dev/zarf/blob/main/CODEOWNERS) approves the pipeline run._
+1. Once review is complete and approved, a core member of the Zarf project will merge the pull request. Contributions from non-maintainers require approval from two core members.
 
 ## Testing
 
 > A more comprehensive guide to testing can be found [here](https://docs.zarf.dev/contribute/testing).
 
-Our E2E tests can be found in the `src/test` folder and follow the journey of someone as they would use the Zarf CLI. In CI these tests run against our currently supported cluster distros and are the primary way that Zarf code is tested.
+E2E tests can be found in the `src/test` folder and follow the journey of someone as they would use the Zarf CLI. In CI these tests run against the currently supported cluster distros and are the primary way that Zarf code is tested.
 
-Our unit tests can be found as `*_test.go` files inside the package that they are designed to test. These are also run in CI and are designed to test small functions with clear interfaces that would be difficult to test otherwise.
+Unit tests can be found as `*_test.go` files inside the package that they are designed to test. These are also run in CI and are designed to test small functions with clear interfaces that would be difficult to test otherwise.
 
 ## Documentation
 
-The CLI docs (located at `site/src/content/docs/commands`), and [`zarf.schema.json`](https://github.com/zarf-dev/zarf/blob/main/zarf.schema.json) are autogenerated from `make docs-and-schema`. Run this make target locally to regenerate the schema and documentation each time you make a change to the CLI commands or the schema, otherwise CI will fail.
+The CLI docs (located at `site/src/content/docs/commands`), and [`zarf.schema.json`](https://github.com/zarf-dev/zarf/blob/main/zarf.schema.json) are autogenerated from `make docs-and-schema`. Run this make target locally to regenerate the schema and documentation after each change to the CLI commands or the schema, otherwise CI will fail.
 
 We do this so that there is a git commit signature from a person on the commit for better traceability, rather than a non-person entity (e.g. GitHub CI token).
 
