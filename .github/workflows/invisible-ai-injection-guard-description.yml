@@ -1,0 +1,32 @@
+# Flags potential prompt injection hidden in issue and pull request titles or descriptions.
+name: Invisible AI Injection Guard (Descriptions)
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  # Use the base workflow for fork PRs. The job never checks out PR code.
+  pull_request_target:
+    types: [opened, edited, reopened]
+
+permissions: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Scan issue and PR titles and descriptions
+        # Update to the upstream merge commit once zarf-dev/actions#5 lands.
+        uses: zarf-dev/actions/invisible-ai-injection-guard@8f88cac0a89a40e2e74cbc8063795b68c99a6fb7
+        with:
+          label: suspicious-hidden-description
+          label-description: Issue or PR title or description contains hidden content
+          fail-on-detection: false # The workflow adds the label instead of failing the run
+          comment: true
+          show-evidence: false # the evidence can be seen in the workflow run
+          trusted-bots: |
+            - dependabot[bot]

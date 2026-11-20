@@ -1,0 +1,40 @@
+# Flags potential prompt injection hidden in issue and pull request comments or reviews.
+name: Invisible AI Injection Guard (Comments)
+
+on:
+  issue_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+
+permissions: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      pull-requests: write
+    env:
+      # Fork and Dependabot review events have a read-only token.
+      CAN_MODERATE: >-
+        ${{ github.event_name == 'issue_comment' ||
+            (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
+    steps:
+      - name: Scan comments and PR reviews
+        # Update to the upstream merge commit once zarf-dev/actions#5 lands.
+        uses: zarf-dev/actions/invisible-ai-injection-guard@8f88cac0a89a40e2e74cbc8063795b68c99a6fb7
+        with:
+          label: suspicious-hidden-comment
+          label-description: A comment or review contains hidden content
+          add-label: ${{ env.CAN_MODERATE }}
+          comment: ${{ env.CAN_MODERATE }}
+          hide-comment: ${{ env.CAN_MODERATE }}
+          # Surface findings as failures when the token cannot apply a label.
+          fail-on-detection: ${{ env.CAN_MODERATE == 'false' }}
+          show-evidence: false
+          trusted-bots: |
+            - dependabot[bot]
